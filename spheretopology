@@ -1,0 +1,54 @@
+import bpy
+import bmesh
+from mathutils import Vector, noise
+from math import sin, cos, pi
+
+def generate_sphere_topology(num_latitudes, num_longitudes, radius, noise_scale):
+    
+    mesh = bpy.data.meshes.new('SphereTopology')
+
+    
+    obj = bpy.data.objects.new('SphereTopology', mesh)
+    bpy.context.scene.collection.objects.link(obj)
+
+    
+    bm = bmesh.new()
+
+    
+    for i in range(num_latitudes):
+        theta = i * pi / (num_latitudes - 1)
+        y = cos(theta)
+        r = sin(theta) * radius
+        for j in range(num_longitudes):
+            phi = j * 2 * pi / num_longitudes
+            x = r * cos(phi)
+            z = r * sin(phi)
+
+            
+            noise_val = noise.snoise3(x / noise_scale, y / noise_scale, z / noise_scale, octaves=4, persistence=0.5)
+            vertex = bm.verts.new(Vector((x + noise_val, y + noise_val, z + noise_val)))
+
+    
+    for i in range(num_latitudes - 1):
+        for j in range(num_longitudes):
+            a = j + i * num_longitudes
+            b = (j + 1) % num_longitudes + i * num_longitudes
+            c = j + (i + 1) * num_longitudes
+            d = (j + 1) % num_longitudes + (i + 1) * num_longitudes
+
+            face = bm.faces.new([bm.verts[a], bm.verts[b], bm.verts[d], bm.verts[c]])
+
+    
+    bm.to_mesh(mesh)
+    bm.free()
+
+    
+    mesh.use_auto_smooth = True
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+
+    
+    return obj
+
+
+generate_sphere_topology(64, 128, 2, 4)
